@@ -12,6 +12,26 @@ for (const op of ['!', '-', '+']) {
   soperators[op] = new Function('a', `return ${op}a`);
 }
 
+statements.fn = (scope, ...args) => {
+  const arguments = [];
+  for (let arg of args) {
+    if (arg.type === "operation") break;
+
+    if (arg.type !== "var") console.error("Incorrect argument " + arg.val);
+
+    arguments.push(arg);      
+  }
+
+  arguments.map((item) => item.val);
+
+  return function() {
+    const newScope = { __upperScope: scope };
+    for (let i = 0; i < arguments.length; i++)
+      newScope[arguments[i]] = arguments[i];
+    return evaluate(args.slice(arguments.length), newScope);
+  }
+};
+
 statements.if = (scope, cond, ifbody, elsebody) => {
   return Boolean(cond.val) 
   ? evaluate(ifbody, scope) 
@@ -39,9 +59,17 @@ statements.do = (scope, ...args) => {
   return res;
 };
 
+statements.call = (scope, ...args) => {
+  const neededScope = findScope(args[0].val, scope);
+  console.log(neededScope.plus(), args.slice(1));
+
+  return neededScope[args[0].val](...args.slice(1)); 
+};
+
 statements.print = (scope, ...args) => {
   for (let arg of args) {
-    const neededScope = findScope(arg.val, scope);
+    let neededScope = findScope(arg.val, scope);
+    neededScope = neededScope ? neededScope : scope;
     if (arg.type === "var") {
       console.log(neededScope[arg.val]);
     }
@@ -149,8 +177,7 @@ const evaluate = (obj, scope) => {
   }
   else if (obj.type === "var") {
     let found = false;
-    if (obj.val.includes('['))
-      found = evalArray(obj.val, scope);
+    if (obj.val.includes('[')) found = evalArray(obj.val, scope);
     else found = evalVal(obj.val, scope);
     if (found === undefined)
       return console.error(
@@ -159,7 +186,6 @@ const evaluate = (obj, scope) => {
     return found;
   }
   else if (obj.type === "operator") {
-    // console.log(obj, scope, evaluate(obj.args[0], scope));
     const [a, b] = obj.args.map((item) => evaluate(item, scope));
     const operResult = 
       obj.args.length === 1 
@@ -178,15 +204,8 @@ const evaluate = (obj, scope) => {
 
 const parsed = parse(`
   (do 
-    (def yes 0)
-    (def maryusa 20)
-    (while (< yes 5) 
-      (do 
-        (def yes (+ yes 1))
-        (def maryusa (- maryusa 1))
-      )
-    )
-    (print maryusa)
+    (def plus (fn a b (+ a b)))
+    (print (call (plus 5 6)))
   )
 `);
 
