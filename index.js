@@ -59,9 +59,9 @@ statements.call = (scope, ...args) => {
   const neededScope = findScope(args[0].val, scope);
   return neededScope[args[0].val](
     ...args.slice(1).map(item => {
-      if (item.type === "operation");
-        item.val = evaluate(item, neededScope);
-      return item.val;
+      // if (item.type === "operation");
+      //   item.val = evaluate(item, neededScope);
+      return evaluate(item, neededScope);
     })
   ); 
 };
@@ -217,7 +217,12 @@ const parsed = parse(`
           sm
       ))
     )
-    (print (call (sum 5))
+    (def mul (fn a b (* a b)))
+    (
+      do
+        (def res (call (sum 5)) )
+        (print (call (mul res 5)))
+    )
   )
 `);
 
