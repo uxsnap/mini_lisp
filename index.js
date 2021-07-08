@@ -13,29 +13,25 @@ for (const op of ['!', '-', '+']) {
 }
 
 statements.fn = (scope, ...args) => {
-  const arguments = [];
-  for (let arg of args) {
-    if (arg.type === "operation") break;
-
+  let body = args[args.length - 1];
+  let params = args.slice(0, args.length - 1).map((arg) => {
     if (arg.type !== "var") console.error("Incorrect argument " + arg.val);
+    return arg.val
+  });
 
-    arguments.push(arg);      
-  }
-
-  arguments.map((item) => item.val);
-
-  return function() {
+  return function(...inargs) {
     const newScope = { __upperScope: scope };
-    for (let i = 0; i < arguments.length; i++)
-      newScope[arguments[i]] = arguments[i];
-    return evaluate(args.slice(arguments.length), newScope);
+    for (let i = 0; i < params.length; i++) {
+      newScope[params[i]] = inargs[i];
+    }
+    return evaluate(body, newScope);
   }
 };
 
 statements.if = (scope, cond, ifbody, elsebody) => {
-  return Boolean(cond.val) 
-  ? evaluate(ifbody, scope) 
-  : (elsebody ? evaluate(elsebody, scope) : undefined);
+  return Boolean(evaluate(cond, scope)) 
+    ? evaluate(ifbody, scope) 
+    : (elsebody ? evaluate(elsebody, scope) : undefined);
 };
 
 
@@ -61,9 +57,13 @@ statements.do = (scope, ...args) => {
 
 statements.call = (scope, ...args) => {
   const neededScope = findScope(args[0].val, scope);
-  console.log(neededScope.plus(), args.slice(1));
-
-  return neededScope[args[0].val](...args.slice(1)); 
+  return neededScope[args[0].val](
+    ...args.slice(1).map(item => {
+      if (item.type === "operation");
+        item.val = evaluate(item, neededScope);
+      return item.val;
+    })
+  ); 
 };
 
 statements.print = (scope, ...args) => {
@@ -174,8 +174,7 @@ const evaluate = (obj, scope) => {
   if (!obj) return;
   else if (obj.type === "operand") {
     return obj.val;
-  }
-  else if (obj.type === "var") {
+  } else if (obj.type === "var") {
     let found = false;
     if (obj.val.includes('[')) found = evalArray(obj.val, scope);
     else found = evalVal(obj.val, scope);
@@ -184,8 +183,7 @@ const evaluate = (obj, scope) => {
         "No variable with name '" + obj.val + "' has been found."
       );
     return found;
-  }
-  else if (obj.type === "operator") {
+  } else if (obj.type === "operator") {
     const [a, b] = obj.args.map((item) => evaluate(item, scope));
     const operResult = 
       obj.args.length === 1 
@@ -204,9 +202,24 @@ const evaluate = (obj, scope) => {
 
 const parsed = parse(`
   (do 
-    (def plus (fn a b (+ a b)))
-    (print (call (plus 5 6)))
+    (def 
+      sum 
+      (fn n 
+        (do 
+          (def sm 0) 
+          (def i 0) 
+          (while (<= i n) 
+            (do 
+              (def sm (+ sm i)) 
+              (def i (+ i 1))
+            ) 
+          )
+          sm
+      ))
+    )
+    (print (call (sum 5))
   )
 `);
 
+    // (print (call (mul sm 10))
 evaluate(parsed.expr, globalScope);
